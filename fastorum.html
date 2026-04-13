@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ars Fastorum · MMXXVI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #1a1a18;
+      color: #e8e6df;
+      font-family: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
+      padding: 24px;
+      min-height: 100vh;
+    }
+
+    /* Navigation — matches IHG site */
+    .nav {
+      text-align: center;
+      margin-bottom: 32px;
+      font-size: 14px;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+    }
+    .nav a {
+      color: #8a8780;
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+    .nav a:hover { color: #e8e6df; }
+    .nav .sep { color: #4a4940; margin: 0 12px; }
+    .nav .active { color: #c9a84c; border-bottom: 2px solid #c9a84c; padding-bottom: 4px; }
+
+    /* Controls */
+    .controls {
+      margin-bottom: 20px;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .controls-label {
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      opacity: 0.4;
+      text-transform: uppercase;
+    }
+    .track-btn {
+      background: transparent;
+      border: 1.5px solid #555;
+      border-radius: 4px;
+      padding: 4px 12px;
+      font-size: 11px;
+      font-family: inherit;
+      letter-spacing: 0.05em;
+      cursor: pointer;
+      color: #777;
+      transition: all 0.15s;
+    }
+    .track-btn.active {
+      background: var(--tc, #555) 12;
+      border-color: var(--tc, #555);
+      color: var(--tc, #555);
+    }
+    .print-btn {
+      margin-left: auto;
+      background: #e8e6df;
+      color: #1a1a18;
+      border: none;
+      border-radius: 4px;
+      padding: 6px 18px;
+      font-size: 11px;
+      font-family: inherit;
+      letter-spacing: 0.1em;
+      cursor: pointer;
+      text-transform: uppercase;
+    }
+
+    /* Status */
+    .status {
+      margin-bottom: 12px;
+      font-size: 10px;
+      opacity: 0.3;
+      letter-spacing: 0.1em;
+      padding-left: 2px;
+    }
+    .status.error {
+      opacity: 1;
+      color: #e25b45;
+      padding: 8px 16px;
+      background: #2a1a18;
+      border: 1px solid #e25b45;
+      border-radius: 4px;
+      font-size: 11px;
+    }
+
+    /* Calendar grid */
+    .grid-wrap { overflow-x: auto; overflow-y: visible; }
+    .title-main {
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: #e8e6df;
+    }
+    .title-sub {
+      font-size: 11px;
+      letter-spacing: 0.15em;
+      opacity: 0.3;
+      margin-top: 2px;
+    }
+    .dow-header {
+      width: 28px;
+      margin-right: 2px;
+      text-align: center;
+      font-size: 8px;
+      opacity: 0.25;
+      display: inline-block;
+    }
+    .month-row {
+      display: flex;
+      align-items: center;
+      margin-bottom: 2px;
+      height: 28px;
+    }
+    .month-label {
+      width: 100px;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.2em;
+      opacity: 0.5;
+      flex-shrink: 0;
+    }
+    .day-cell {
+      width: 28px;
+      height: 28px;
+      margin-right: 2px;
+      flex-shrink: 0;
+      border-radius: 2px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      cursor: default;
+      transition: all 0.1s;
+      border: 1px solid #2a2a28;
+    }
+    .day-cell.empty { border: none; }
+    .day-cell.weekend { background: #1e1e1c; }
+    .day-cell.past { border-color: #252523; }
+    .day-cell.today { background: #e8e6df; border: none; }
+    .day-cell.today .day-num { color: #1a1a18; opacity: 1; }
+    .day-cell.has-google { background: rgba(45, 106, 79, 0.15); border-color: rgba(45, 106, 79, 0.35); }
+    .day-cell.has-data { background: #222220; }
+    .day-cell:hover:not(.empty) { border-color: #e8e6df; }
+    .day-num {
+      font-size: 7px;
+      opacity: 0.2;
+      line-height: 1;
+    }
+    .day-symbols {
+      display: flex;
+      gap: 1px;
+      flex-wrap: wrap;
+      justify-content: center;
+      line-height: 1;
+      margin-top: 1px;
+    }
+
+    /* Tooltip */
+    .tooltip {
+      position: absolute;
+      bottom: 32px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #e8e6df;
+      color: #1a1a18;
+      padding: 6px 10px;
+      border-radius: 3px;
+      font-size: 9px;
+      z-index: 100;
+      pointer-events: none;
+      letter-spacing: 0.05em;
+      max-width: 280px;
+      white-space: normal;
+      display: none;
+    }
+    .day-cell:hover .tooltip { display: block; }
+    .tooltip-labels { opacity: 0.6; font-size: 8px; margin-top: 2px; }
+
+    /* Legend */
+    .legend {
+      display: flex;
+      gap: 24px;
+      padding-left: 100px;
+      margin-top: 16px;
+      flex-wrap: wrap;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 9px;
+      letter-spacing: 0.1em;
+    }
+    .legend-symbol { font-size: 12px; }
+    .legend-label { opacity: 0.4; text-transform: uppercase; }
+    .legend-type { opacity: 0.2; font-size: 8px; font-style: italic; }
+
+    /* Footer */
+    .footer {
+      padding-left: 100px;
+      margin-top: 12px;
+      font-size: 8px;
+      opacity: 0.15;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+    }
+
+    /* Print */
+    @media print {
+      @page { size: A3 landscape; margin: 12mm; }
+      .no-print { display: none !important; }
+      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: #fff; color: #1a1a18; }
+      .day-cell { border-color: #ddd; }
+      .day-cell.today { background: #1a1a18; }
+      .day-cell.today .day-num { color: #fff; }
+      .day-cell.has-google { background: rgba(45, 106, 79, 0.12); border-color: rgba(45, 106, 79, 0.3); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navigation -->
+  <div class="nav no-print">
+    <a href="index.html">Labora</a>
+    <span class="sep">·</span>
+    <a href="index.html">Requies</a>
+    <span class="sep">·</span>
+    <a href="index.html">Memoria</a>
+    <span class="sep">·</span>
+    <a href="fastorum.html" class="active">Fastorum</a>
+  </div>
+
+  <!-- Controls -->
+  <div class="controls no-print" id="controls"></div>
+
+  <!-- Status -->
+  <div class="status" id="status">Loading Google Calendar…</div>
+
+  <!-- Calendar -->
+  <div class="grid-wrap">
+    <div id="calendar"></div>
+  </div>
+
+<script>
+// ── CONFIG ───────────────────────────────────────────────────────
+const YEAR = 2026;
+
+const FULL_MOONS = [
+  "2026-01-03","2026-02-01","2026-03-03","2026-04-01","2026-05-01",
+  "2026-05-31","2026-06-29","2026-07-29","2026-08-28","2026-09-26",
+  "2026-10-26","2026-11-24","2026-12-24",
+];
+
+const TRACKS = {
+  googleCal:      { label: "Google Calendar", symbol: "▪", color: "#2D6A4F", type: "imported" },
+  fullMoon:       { label: "Full Moon",       symbol: "●", color: "#C4A35A", type: "injected" },
+  ihg:            { label: "IHG",             symbol: "◆", color: "#E25B45", type: "declared" },
+  querulaRelicta: { label: "Complaint Free",  symbol: "○", color: "#4A90A4", type: "declared" },
+  callVanessa:    { label: "☎ Vanessa",       symbol: "☎", color: "#7B68AE", type: "declared" },
+};
+
+// Sample declared data — will come from Supabase later
+const SAMPLE = {};
+FULL_MOONS.forEach(d => { SAMPLE[d] = (SAMPLE[d]||[]).concat("fullMoon"); });
+
+const MONTHS = ["JANUARY","FEBRUARY","MARCH","APRIL","MAY","JUNE",
+  "JULY","AUGUST","SEPTEMBER","OCTOBER","NOVEMBER","DECEMBER"];
+const DOW = ["M","T","W","T","F","S","S"];
+
+// ── STATE ────────────────────────────────────────────────────────
+let activeTracks = new Set(Object.keys(TRACKS));
+let googleDates = {};   // date -> Set of track keys
+let googleLabels = {};  // date -> [summary strings]
+let allData = {};       // merged: date -> Set of track keys
+
+// ── ICAL PARSER ──────────────────────────────────────────────────
+function parseAllDay(text) {
+  const events = [];
+  const blocks = text.split("BEGIN:VEVENT");
+  for (let i = 1; i < blocks.length; i++) {
+    const b = blocks[i].split("END:VEVENT")[0];
+    const sm = b.match(/DTSTART;(?:[^:]*?VALUE=DATE[^:]*):(\d{4})(\d{2})(\d{2})/);
+    if (!sm) continue;
+    const sy = +sm[1], smo = +sm[2]-1, sd = +sm[3];
+    const em = b.match(/DTEND;(?:[^:]*?VALUE=DATE[^:]*):(\d{4})(\d{2})(\d{2})/);
+    let summary = "Event";
+    const sumM = b.match(/SUMMARY:(.*)/);
+    if (sumM) {
+      let raw = sumM[1];
+      const idx = b.indexOf(sumM[0]);
+      const rest = b.substring(idx + sumM[0].length);
+      const cont = rest.match(/^((?:\r?\n[ \t].+)*)/);
+      if (cont && cont[1]) raw += cont[1].replace(/\r?\n[ \t]/g, "");
+      summary = raw.replace(/\\n/g," ").replace(/\\,/g,",").replace(/\r/g,"").trim();
+    }
+    if (em) {
+      const end = new Date(+em[1], +em[2]-1, +em[3]);
+      let cur = new Date(sy, smo, sd);
+      while (cur < end) {
+        events.push({ date: fmt(cur.getFullYear(), cur.getMonth(), cur.getDate()), summary });
+        cur.setDate(cur.getDate()+1);
+      }
+    } else {
+      events.push({ date: fmt(sy, smo, sd), summary });
+    }
+  }
+  return events;
+}
+
+// ── HELPERS ──────────────────────────────────────────────────────
+function fmt(y,m,d) {
+  return y+"-"+String(m+1).padStart(2,"0")+"-"+String(d).padStart(2,"0");
+}
+function dim(y,m) { return new Date(y,m+1,0).getDate(); }
+function fd(y,m) { const d=new Date(y,m,1).getDay(); return d===0?6:d-1; }
+function isToday(y,m,d) { const n=new Date(); return n.getFullYear()===y&&n.getMonth()===m&&n.getDate()===d; }
+function isPast(y,m,d) { const n=new Date();n.setHours(0,0,0,0); return new Date(y,m,d)<n; }
+
+// ── MERGE DATA ───────────────────────────────────────────────────
+function mergeData() {
+  allData = {};
+  for (const [date, tracks] of Object.entries(SAMPLE)) {
+    if (!allData[date]) allData[date] = new Set();
+    (Array.isArray(tracks)?tracks:[tracks]).forEach(t => allData[date].add(t));
+  }
+  for (const [date, tracks] of Object.entries(googleDates)) {
+    if (!allData[date]) allData[date] = new Set();
+    tracks.forEach(t => allData[date].add(t));
+  }
+}
+
+// ── RENDER ───────────────────────────────────────────────────────
+function render() {
+  mergeData();
+  const COLS = 37;
+  let html = "";
+
+  // Title
+  html += '<div style="margin-bottom:8px;padding-left:100px">';
+  html += '<div class="title-main">ARS FASTORUM</div>';
+  html += '<div class="title-sub">MMXXVI · AGE · AEDIFICA · COGITA</div>';
+  html += '</div>';
+
+  // DOW headers
+  html += '<div style="display:flex;padding-left:100px;margin-bottom:4px">';
+  for (let i=0;i<COLS;i++) {
+    html += '<div class="dow-header">'+(i<7?DOW[i]:"")+'</div>';
+  }
+  html += '</div>';
+
+  // Months
+  for (let mi=0;mi<12;mi++) {
+    const days = dim(YEAR,mi);
+    const first = fd(YEAR,mi);
+    html += '<div class="month-row">';
+    html += '<div class="month-label">'+MONTHS[mi]+'</div>';
+    for (let ci=0;ci<COLS;ci++) {
+      const dn = ci-first+1;
+      if (dn<1||dn>days) {
+        html += '<div class="day-cell empty"></div>';
+        continue;
+      }
+      const ds = fmt(YEAR,mi,dn);
+      const dt = allData[ds];
+      const active = dt ? [...dt].filter(t=>activeTracks.has(t)) : [];
+      const td = isToday(YEAR,mi,dn);
+      const ps = isPast(YEAR,mi,dn);
+      const dow = new Date(YEAR,mi,dn).getDay();
+      const we = dow===0||dow===6;
+      const hasG = active.includes("googleCal");
+      const gLbl = googleLabels[ds]||[];
+
+      let cls = "day-cell";
+      if (td) cls += " today";
+      else if (hasG) cls += " has-google";
+      else if (active.length>0) cls += " has-data";
+      else if (we) cls += " weekend";
+      if (ps&&!td) cls += " past";
+
+      html += '<div class="'+cls+'">';
+      html += '<div class="day-num">'+dn+'</div>';
+      if (active.length>0) {
+        html += '<div class="day-symbols">';
+        active.forEach(tk => {
+          const sz = active.length>2?6:8;
+          html += '<span style="font-size:'+sz+'px;color:'+TRACKS[tk].color+';line-height:1">'+TRACKS[tk].symbol+'</span>';
+        });
+        html += '</div>';
+      }
+      if (active.length>0||gLbl.length>0) {
+        html += '<div class="tooltip no-print">';
+        html += '<div>'+MONTHS[mi].slice(0,3)+' '+dn;
+        if (active.length>0) html += ': '+active.map(t=>TRACKS[t].label).join(' · ');
+        html += '</div>';
+        if (gLbl.length>0) html += '<div class="tooltip-labels">'+gLbl.join(' · ')+'</div>';
+        html += '</div>';
+      }
+      html += '</div>';
+    }
+    html += '</div>';
+  }
+
+  // Legend
+  html += '<div class="legend">';
+  Object.entries(TRACKS).forEach(([k,t]) => {
+    if (!activeTracks.has(k)) return;
+    html += '<div class="legend-item">';
+    html += '<span class="legend-symbol" style="color:'+t.color+'">'+t.symbol+'</span>';
+    html += '<span class="legend-label">'+t.label+'</span>';
+    html += '<span class="legend-type">'+t.type+'</span>';
+    html += '</div>';
+  });
+  html += '</div>';
+
+  // Footer
+  html += '<div class="footer">Ars fastorum omnia dabit · '+new Date().toLocaleDateString("en-US",{year:"numeric",month:"long",day:"numeric"})+'</div>';
+
+  document.getElementById("calendar").innerHTML = html;
+}
+
+// ── CONTROLS ─────────────────────────────────────────────────────
+function renderControls() {
+  let html = '<span class="controls-label">Tracks:</span>';
+  Object.entries(TRACKS).forEach(([k,t]) => {
+    const on = activeTracks.has(k);
+    const bg = on ? t.color+"22" : "transparent";
+    const bc = on ? t.color : "#555";
+    const fc = on ? t.color : "#777";
+    html += '<button class="track-btn'+(on?" active":"")+'" style="--tc:'+t.color+';background:'+bg+';border-color:'+bc+';color:'+fc+'" onclick="toggleTrack(\''+k+'\')">';
+    html += '<span style="margin-right:6px">'+t.symbol+'</span>'+t.label;
+    html += '</button>';
+  });
+  html += '<button class="print-btn" onclick="window.print()">Print A3</button>';
+  document.getElementById("controls").innerHTML = html;
+}
+
+function toggleTrack(k) {
+  if (activeTracks.has(k)) activeTracks.delete(k);
+  else activeTracks.add(k);
+  renderControls();
+  render();
+}
+
+// ── FETCH GOOGLE CALENDAR ────────────────────────────────────────
+async function fetchGoogle() {
+  const status = document.getElementById("status");
+  try {
+    const res = await fetch("/.netlify/functions/ical-proxy");
+    if (!res.ok) throw new Error("HTTP "+res.status);
+    const text = await res.text();
+    const events = parseAllDay(text);
+
+    googleDates = {};
+    googleLabels = {};
+    for (const evt of events) {
+      if (!evt.date.startsWith(String(YEAR))) continue;
+      if (!googleDates[evt.date]) { googleDates[evt.date]=new Set(); googleLabels[evt.date]=[]; }
+      googleDates[evt.date].add("googleCal");
+      if (!googleLabels[evt.date].includes(evt.summary)) googleLabels[evt.date].push(evt.summary);
+    }
+    status.className = "status";
+    status.textContent = "GOOGLE CALENDAR: "+Object.keys(googleDates).length+" days with all-day events";
+    render();
+  } catch(e) {
+    status.className = "status error";
+    status.textContent = "Google Calendar: "+e.message;
+    render();
+  }
+}
+
+// ── INIT ─────────────────────────────────────────────────────────
+renderControls();
+render();
+fetchGoogle();
+</script>
+</body>
+</html>
