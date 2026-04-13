@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Labora · Requies · Memoria</title>
+<link href="https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=IM+Fell+English+SC&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --vellum:  #0d0b08;
+  --vellum2: #141108;
+  --vellum3: #1c1810;
+  --vellum4: #242018;
+  --ink:     #e8dfc8;
+  --ink2:    #a89870;
+  --ink3:    #6a5f45;
+  --ink4:    #3a3428;
+  --acc:     #c84b31;
+  --gold:    #c9a84c;
+  --green:   #4a7c6f;
+  --border:  rgba(200,168,80,0.15);
+  --border2: rgba(200,168,80,0.25);
+  --radius:  12px;
+}
+
+html, body {
+  height: 100%;
+  background: var(--vellum);
+  color: var(--ink);
+  font-family: 'IM Fell English', Georgia, serif;
+  overflow-x: hidden;
+}
+
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image: repeating-linear-gradient(
+    0deg, transparent, transparent 28px,
+    rgba(200,168,80,0.018) 28px, rgba(200,168,80,0.018) 29px
+  );
+  pointer-events: none; z-index: 0;
+}
+
+/* ── SHELL ── */
+.shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  position: relative; z-index: 1;
+}
+
+/* ── HEADER ── */
+header {
+  padding: 1.5rem 2rem 0;
+  text-align: center;
+  border-bottom: 0.5px solid var(--border);
+  padding-bottom: 0;
+}
+.site-title {
+  font-family: 'IM Fell English SC', serif;
+  font-size: 11px;
+  letter-spacing: 4px;
+  color: var(--ink3);
+  margin-bottom: 1.25rem;
+}
+.site-sub {
+  font-size: 11px;
+  color: var(--ink4);
+  font-style: italic;
+  margin-bottom: 1rem;
+  letter-spacing: 0.3px;
+}
+
+/* ── TABS ── */
+nav {
+  display: flex;
+  justify-content: center;
+  gap: 0;
+}
+.tab {
+  padding: 0.6rem 2rem;
+  font-family: 'IM Fell English SC', serif;
+  font-size: 12px;
+  letter-spacing: 2.5px;
+  color: var(--ink3);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+  background: none;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+  user-select: none;
+}
+.tab:hover { color: var(--ink2); }
+.tab.active {
+  color: var(--gold);
+  border-bottom-color: var(--gold);
+}
+.tab-sep {
+  display: flex;
+  align-items: flex-end;
+  padding-bottom: 0.7rem;
+  color: var(--ink4);
+  font-size: 10px;
+  user-select: none;
+}
+
+/* ── PANEL ── */
+.panels { flex: 1; }
+.panel { display: none; padding: 2rem 1rem; max-width: 520px; margin: 0 auto; }
+.panel.active { display: block; }
+
+/* ════════════════════════════════
+   LABORA — TIMER PANEL
+   ════════════════════════════════ */
+.timer-wrap { text-align: center; }
+
+.ring-wrap {
+  position: relative;
+  width: 240px; height: 240px;
+  margin: 0 auto 1.25rem;
+}
+.ring-wrap svg { position: absolute; top:0; left:0; transform: rotate(-90deg); }
+.ring-bg { fill: none; stroke: rgba(200,168,80,0.08); stroke-width: 6; }
+.ring-fg { fill: none; stroke-width: 6; stroke-linecap: round;
+  transition: stroke-dashoffset 1s linear, stroke 0.6s ease; }
+.breath-ring { fill: none; stroke-width: 2; stroke-linecap: round;
+  transition: stroke-dashoffset 0.08s linear, stroke 0.5s ease, opacity 0.5s; opacity: 0; }
+.ring-center {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 4px;
+}
+.big-time {
+  font-size: 54px; font-weight: 400;
+  letter-spacing: -2px; line-height: 1; color: var(--ink);
+}
+.phase-label {
+  font-size: 10px; color: var(--ink3);
+  letter-spacing: 2px; font-family: 'IM Fell English SC', serif;
+}
+.breath-cue {
+  font-size: 12px; color: var(--gold); letter-spacing: 1px;
+  min-height: 18px; font-style: italic; margin-bottom: 0.75rem;
+  opacity: 0; transition: opacity 0.4s;
+}
+.breath-cue.show { opacity: 1; }
+
+/* lux field */
+.lux-field {
+  min-height: 120px; margin: 0 auto 1.25rem; max-width: 380px;
+  display: flex; flex-direction: column; gap: 12px; justify-content: center;
+}
+.lux-phrase { opacity: 0; transform: translateY(8px);
+  transition: opacity 1s ease, transform 1s ease; }
+.lux-phrase.visible { opacity: 1; transform: translateY(0); }
+.lux-latin { font-size: 16px; color: var(--gold); line-height: 1.35; font-style: italic; }
+.lux-english { font-size: 10px; color: var(--ink3); letter-spacing: 0.5px;
+  font-family: 'IM Fell English SC', serif; margin-top: 3px; }
+
+.hand-row { display: flex; justify-content: center; gap: 10px; margin-bottom: 1rem; }
+.hand {
+  padding: 5px 20px; border-radius: 20px;
+  font-size: 12px; font-family: 'IM Fell English SC', serif; letter-spacing: 1px;
+  border: 0.5px solid var(--border); color: var(--ink3); background: var(--vellum2);
+  transition: all 0.4s;
+}
+.hand.active { background: var(--acc); border-color: var(--acc); color: #fff; }
+
+.sets-row { display: flex; justify-content: center; gap: 10px; margin-bottom: 1.25rem; }
+.set-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--vellum3); border: 0.5px solid var(--border);
+  transition: background 0.4s, border-color 0.4s;
+}
+.set-dot.done { background: var(--acc); border-color: var(--acc); }
+.set-dot.active { background: var(--gold); border-color: var(--gold); }
+
+.t-status { font-size: 13px; color: var(--ink2); min-height: 20px;
+  margin-bottom: 1.25rem; font-style: italic; }
+
+.controls { display: flex; gap: 10px; justify-content: center; }
+.btn {
+  padding: 10px 24px; border-radius: 8px;
+  font-size: 13px; font-family: 'IM Fell English SC', serif; letter-spacing: 1px;
+  border: 0.5px solid var(--border); background: var(--vellum2); color: var(--ink2);
+  cursor: pointer; transition: all 0.2s;
+}
+.btn:hover:not(:disabled) { border-color: var(--gold); color: var(--gold); }
+.btn.primary { background: var(--acc); border-color: var(--acc); color: #fff;
+  font-size: 14px; padding: 12px 36px; }
+.btn.primary:hover:not(:disabled) { opacity: 0.85; }
+.btn:disabled { opacity: 0.3; cursor: default; }
+
+.complete-panel { display: none; flex-direction: column; align-items: center; gap: 12px; }
+.complete-panel.show { display: flex; }
+.complete-title { font-family: 'IM Fell English SC', serif; font-size: 24px;
+  color: var(--gold); letter-spacing: 2px; }
+.complete-sub { font-size: 13px; color: var(--ink2); font-style: italic; }
+
+.chant-note { font-size: 10px; color: var(--ink4); margin-top: 2rem;
+  font-style: italic; line-height: 1.6; text-align: center; }
+
+/* ════════════════════════════════
+   MEMORIA — TRACKER PANEL
+   ════════════════════════════════ */
+.tracker-wrap { }
+
+.hdr-card {
+  background: var(--vellum2); border: 0.5px solid var(--border);
+  border-radius: var(--radius); padding: 1rem 1.25rem; margin-bottom: 1rem;
+}
+.hdr-title { font-family: 'IM Fell English SC', serif; font-size: 14px;
+  letter-spacing: 1px; margin-bottom: 4px; }
+.hdr-sub { font-size: 11px; color: var(--ink3); font-style: italic; margin-bottom: 10px; }
+.mvc-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.mvc-row label { font-size: 11px; color: var(--ink2); }
+.mvc-row input { width: 64px; font-size: 12px; padding: 3px 6px;
+  background: var(--vellum3); border: 0.5px solid var(--border2);
+  border-radius: 4px; color: var(--ink); font-family: inherit; }
+.ww-display { font-size: 12px; color: var(--gold); font-style: italic; }
+
+.metrics-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(90px,1fr));
+  gap: 8px; margin-bottom: 1rem;
+}
+.metric-card { background: var(--vellum2); border-radius: 8px; padding: 0.6rem 0.8rem; }
+.metric-lbl { font-size: 9px; color: var(--ink3); text-transform: uppercase;
+  letter-spacing: 0.8px; font-family: 'IM Fell English SC', serif; margin-bottom: 4px; }
+.metric-val { font-size: 22px; font-weight: 400; }
+.metric-val.acc { color: var(--acc); }
+.metric-val.pos { color: #4a9e6a; }
+.metric-val.neg { color: var(--acc); }
+
+.streak-lbl { font-size: 10px; color: var(--ink3); margin-bottom: 5px;
+  font-family: 'IM Fell English SC', serif; letter-spacing: 1px; }
+.streak { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 1rem; }
+.s-dot {
+  width: 24px; height: 24px; border-radius: 50%;
+  border: 0.5px solid var(--border2); display: flex; align-items: center;
+  justify-content: center; font-size: 9px; font-weight: 400;
+  color: var(--ink3); background: var(--vellum2); transition: all 0.2s;
+  font-family: 'IM Fell English SC', serif;
+}
+.s-dot.done { background: var(--acc); border-color: var(--acc); color: #fff; }
+.s-dot.next { border: 1.5px solid var(--gold); color: var(--gold); }
+
+.chart-card {
+  background: var(--vellum2); border: 0.5px solid var(--border);
+  border-radius: var(--radius); padding: 1rem; margin-bottom: 1rem;
+}
+.chart-lbl { font-size: 10px; color: var(--ink3); font-family: 'IM Fell English SC', serif;
+  letter-spacing: 1px; margin-bottom: 8px; }
+.chart-area { position: relative; height: 130px; width: 100%; }
+
+.tbl-wrap {
+  border: 0.5px solid var(--border); border-radius: var(--radius);
+  overflow: auto; margin-bottom: 1rem;
+}
+table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 480px; }
+thead th {
+  background: var(--vellum2); font-weight: 400; font-size: 9px; color: var(--ink3);
+  font-family: 'IM Fell English SC', serif; letter-spacing: 1px;
+  padding: 7px 8px; text-align: left; border-bottom: 0.5px solid var(--border);
+}
+tbody tr { border-bottom: 0.5px solid var(--border); transition: background 0.15s; }
+tbody tr:last-child { border-bottom: none; }
+tbody tr:hover { background: var(--vellum2); }
+tbody tr.done-row { opacity: 0.6; }
+td { padding: 5px 8px; vertical-align: middle; }
+td input[type="text"], td input[type="number"] {
+  width: 100%; font-size: 11px; background: transparent; border: none;
+  border-bottom: 0.5px solid var(--border); color: var(--ink);
+  padding: 1px 2px; outline: none; font-family: inherit;
+}
+td input:focus { border-bottom-color: var(--gold); }
+.snum { font-family: 'IM Fell English SC', serif; font-size: 11px; color: var(--ink3); }
+.checkbtn {
+  width: 20px; height: 20px; border-radius: 4px;
+  border: 0.5px solid var(--border2); background: transparent;
+  cursor: pointer; display: inline-flex; align-items: center;
+  justify-content: center; font-size: 12px; transition: all 0.15s; color: var(--ink);
+}
+.checkbtn.done { background: var(--acc); border-color: var(--acc); color: #fff; }
+.bp-inp { display: flex; align-items: center; gap: 3px; }
+.bp-sep { font-size: 10px; color: var(--ink3); }
+
+.reset-btn {
+  font-size: 10px; color: var(--ink3); background: none;
+  border: 0.5px solid var(--border); border-radius: 4px;
+  padding: 2px 8px; cursor: pointer; float: right; margin-bottom: 6px;
+  font-family: 'IM Fell English SC', serif; letter-spacing: 1px;
+}
+.reset-btn:hover { color: var(--acc); border-color: var(--acc); }
+
+/* ════════════════════════════════
+   REQUIES — NOTES PANEL
+   ════════════════════════════════ */
+.notes-wrap { }
+.notes-header { font-family: 'IM Fell English SC', serif; font-size: 11px;
+  letter-spacing: 2px; color: var(--ink3); margin-bottom: 1rem; }
+.notes-area {
+  width: 100%; min-height: 480px;
+  background: var(--vellum2); border: 0.5px solid var(--border);
+  border-radius: var(--radius); padding: 1.25rem;
+  color: var(--ink); font-family: 'IM Fell English', Georgia, serif;
+  font-size: 13px; line-height: 1.8; resize: vertical; outline: none;
+}
+.notes-area:focus { border-color: var(--border2); }
+.notes-save {
+  margin-top: 10px; font-size: 11px; color: var(--ink3);
+  font-family: 'IM Fell English SC', serif; letter-spacing: 1px;
+  font-style: italic;
+}
+
+/* ── FOOTER ── */
+footer {
+  text-align: center; padding: 1.5rem;
+  font-size: 10px; color: var(--ink4); font-style: italic;
+  border-top: 0.5px solid var(--border); margin-top: 2rem;
+}
+
+audio { display: none; }
+</style>
+</head>
+<body>
+<div class="shell">
+
+<header>
+  <div class="site-title">Labora &middot; Requies &middot; Memoria</div>
+  <div class="site-sub">Isometric Handgrip Protocol &mdash; Orgonotic Streaming Experiment</div>
+  <nav>
+    <button class="tab active" onclick="switchTab('labora', this)">Labora</button>
+    <span class="tab-sep">&middot;</span>
+    <button class="tab" onclick="switchTab('requies', this)">Requies</button>
+    <span class="tab-sep">&middot;</span>
+    <button class="tab" onclick="switchTab('memoria', this)">Memoria</button>
+  </nav>
+</header>
+
+<div class="panels">
+
+  <!-- ══ LABORA: TIMER ══ -->
+  <div class="panel active" id="panel-labora">
+    <div class="timer-wrap">
+      <div id="timer-main">
+        <div class="ring-wrap">
+          <svg width="240" height="240" viewBox="0 0 240 240">
+            <circle class="ring-bg" cx="120" cy="120" r="106"/>
+            <circle class="ring-fg" id="ring" cx="120" cy="120" r="106"/>
+            <circle class="breath-ring" id="bring" cx="120" cy="120" r="82"/>
+          </svg>
+          <div class="ring-center">
+            <div class="big-time" id="bigtime">2:00</div>
+            <div class="phase-label" id="phaselabel">ready</div>
+          </div>
+        </div>
+
+        <div class="breath-cue" id="breathcue">inhale</div>
+
+        <div class="lux-field">
+          <div class="lux-phrase" id="lp0">
+            <div class="lux-latin">Lux &aelig;terna luceat eis, Domine,</div>
+            <div class="lux-english">May eternal light shine upon them, O Lord,</div>
+          </div>
+          <div class="lux-phrase" id="lp1">
+            <div class="lux-latin">cum Sanctis tuis in &aelig;ternum,</div>
+            <div class="lux-english">with thy Saints for ever,</div>
+          </div>
+          <div class="lux-phrase" id="lp2">
+            <div class="lux-latin">quia pius es.</div>
+            <div class="lux-english">for thou art merciful.</div>
+          </div>
+          <div class="lux-phrase" id="lp3">
+            <div class="lux-latin">Requiem &aelig;ternam dona eis, Domine,</div>
+            <div class="lux-english">Grant them eternal rest, O Lord,</div>
+          </div>
+          <div class="lux-phrase" id="lp4">
+            <div class="lux-latin">et lux perpetua luceat eis.</div>
+            <div class="lux-english">and may perpetual light shine upon them.</div>
+          </div>
+        </div>
+
+        <div class="hand-row">
+          <div class="hand" id="hand-L">Left</div>
+          <div class="hand" id="hand-R">Right</div>
+        </div>
+
+        <div class="sets-row">
+          <div class="set-dot" id="d0"></div>
+          <div class="set-dot" id="d1"></div>
+          <div class="set-dot" id="d2"></div>
+          <div class="set-dot" id="d3"></div>
+        </div>
+
+        <div class="t-status" id="tstatus">Press start when ready.</div>
+
+        <div class="controls">
+          <button class="btn primary" id="startbtn" onclick="startSession()">Start</button>
+          <button class="btn" id="resetbtn" onclick="resetSession()" disabled>Reset</button>
+        </div>
+      </div>
+
+      <div class="complete-panel" id="complete">
+        <div style="font-size:32px;color:var(--gold)">&dagger;</div>
+        <div class="complete-title">Lux &AElig;terna</div>
+        <div class="complete-sub">Four sets complete. Sit quietly. Take your reading.</div>
+        <div class="lux-phrase visible" style="margin-top:4px">
+          <div class="lux-latin">et lux perpetua luceat eis.</div>
+          <div class="lux-english">and may perpetual light shine upon them.</div>
+        </div>
+        <button class="btn primary" onclick="resetSession()" style="margin-top:1rem">New session</button>
+      </div>
+
+      <div class="chant-note">
+        &dagger; &nbsp;Place <em>chant.mp3</em> in the same folder to hear Gregorian chant during rest intervals.
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ REQUIES: TRACKER ══ -->
+  <div class="panel" id="panel-requies">
+    <div class="tracker-wrap">
+
+      <div class="hdr-card">
+        <div class="hdr-title">Protocol Log</div>
+        <div class="hdr-sub">21 sessions &mdash; as rapidly as logistically possible</div>
+        <div class="mvc-row">
+          <label>MVC (kg):</label>
+          <input type="number" id="mvc" placeholder="e.g. 50" min="10" max="120" step="0.5" oninput="onMVC()">
+          <div class="ww-display" id="ww"></div>
+        </div>
+      </div>
+
+      <div class="metrics-grid" id="metrics"></div>
+
+      <div class="streak-lbl">Session progress</div>
+      <div class="streak" id="streak"></div>
+
+      <div class="chart-card">
+        <div class="chart-lbl">Systolic BP &mdash; goal 115</div>
+        <div class="chart-area">
+          <canvas id="bpchart" role="img" aria-label="Systolic BP across 21 sessions">No data yet.</canvas>
+        </div>
+      </div>
+
+      <button class="reset-btn" onclick="if(confirm('Reset all data?'))resetData()">Reset</button>
+
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:24px">#</th>
+              <th style="width:80px">Date</th>
+              <th style="width:100px">BP sys/dia</th>
+              <th style="width:56px">RHR</th>
+              <th style="width:40px;text-align:center">Done</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══ MEMORIA: NOTES ══ -->
+  <div class="panel" id="panel-memoria">
+    <div class="notes-wrap">
+      <div class="notes-header">Memoria &mdash; Running Notes</div>
+      <textarea class="notes-area" id="notesarea" placeholder="Observations, questions, parking lot items..." oninput="saveNotes()"></textarea>
+      <div class="notes-save" id="notes-save-status"></div>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  Labora &middot; Requies &middot; Memoria &nbsp;&mdash;&nbsp;
+  <em>et lux perpetua luceat eis</em>
+</footer>
+
+</div>
+
+<audio id="chant-audio" loop>
+  <source src="chant.mp3" type="audio/mpeg">
+</audio>
+
+<script>
+/* ══════════════════════════════
+   TAB SWITCHING
+══════════════════════════════ */
+function switchTab(id, btn) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('panel-' + id).classList.add('active');
+  btn.classList.add('active');
+  if (id === 'requies') renderTracker();
+}
+
+/* ══════════════════════════════
+   TIMER
+══════════════════════════════ */
+const SQUEEZE_SEC  = 120;
+const REST_SEC     = 120;
+const HANDS        = ['Left','Right','Left','Right'];
+const CIRC_OUTER   = 2 * Math.PI * 106;
+const CIRC_INNER   = 2 * Math.PI * 82;
+const BREATH_IN    = 5.5;
+const BREATH_OUT   = 5.5;
+const LUX_COUNT    = 5;
+const LUX_INTERVAL = REST_SEC / LUX_COUNT;
+
+const ring      = document.getElementById('ring');
+const bring     = document.getElementById('bring');
+const bigtime   = document.getElementById('bigtime');
+const phaseLbl  = document.getElementById('phaselabel');
+const tstatusEl = document.getElementById('tstatus');
+const breathCue = document.getElementById('breathcue');
+const startbtn  = document.getElementById('startbtn');
+const resetbtn  = document.getElementById('resetbtn');
+const audio     = document.getElementById('chant-audio');
+
+ring.style.strokeDasharray   = CIRC_OUTER;
+ring.style.strokeDashoffset  = CIRC_OUTER;
+bring.style.strokeDasharray  = CIRC_INNER;
+bring.style.strokeDashoffset = CIRC_INNER;
+
+let mainTimer=null, breathTimer=null, luxTimers=[];
+let currentSet=0, phase='idle', secondsLeft=0, totalSec=0;
+let bPhase='in', bSec=0;
+
+function fmt(s){ return Math.floor(s/60)+':'+String(s%60).padStart(2,'0'); }
+function setOuter(f,sq){ ring.style.strokeDashoffset=CIRC_OUTER*(1-f); ring.style.stroke=sq?'#c84b31':'#4a7c6f'; }
+function setInner(f){ bring.style.strokeDashoffset=CIRC_INNER*(1-f); }
+function speak(t){ if(!window.speechSynthesis)return; speechSynthesis.cancel(); const u=new SpeechSynthesisUtterance(t); u.rate=0.88; u.pitch=0.95; speechSynthesis.speak(u); }
+function hideLux(){ for(let i=0;i<LUX_COUNT;i++){ const e=document.getElementById('lp'+i); if(e)e.classList.remove('visible'); } }
+function scheduleLux(){ hideLux(); luxTimers.forEach(t=>clearTimeout(t)); luxTimers=[]; for(let i=0;i<LUX_COUNT;i++){ luxTimers.push(setTimeout(()=>{ const e=document.getElementById('lp'+i); if(e)e.classList.add('visible'); },i*LUX_INTERVAL*1000)); } }
+function clearLux(){ luxTimers.forEach(t=>clearTimeout(t)); luxTimers=[]; hideLux(); }
+function startBreath(){ clearInterval(breathTimer); bPhase='in'; bSec=0; bring.style.opacity='1'; breathCue.classList.add('show'); breathCue.textContent='inhale'; breathTimer=setInterval(()=>{ bSec++; if(bPhase==='in'){ setInner(Math.min(bSec/BREATH_IN,1)); bring.style.stroke='#c9a84c'; if(bSec>=BREATH_IN){bPhase='out';bSec=0;breathCue.textContent='exhale';} }else{ setInner(Math.max(1-bSec/BREATH_OUT,0)); bring.style.stroke='#4a7c6f'; if(bSec>=BREATH_OUT){bPhase='in';bSec=0;breathCue.textContent='inhale';} } },1000); }
+function stopBreath(){ clearInterval(breathTimer); breathTimer=null; bring.style.opacity='0'; breathCue.classList.remove('show'); setInner(0); }
+function playChant(){ try{audio.currentTime=0;audio.volume=0.55;audio.play();}catch(e){} }
+function stopChant(){ try{audio.pause();}catch(e){} }
+function updateDots(){ for(let i=0;i<4;i++){ const d=document.getElementById('d'+i); d.className='set-dot'+(i<currentSet?' done':i===currentSet?' active':''); } }
+function updateHands(h){ document.getElementById('hand-L').className='hand'+(h==='Left'?' active':''); document.getElementById('hand-R').className='hand'+(h==='Right'?' active':''); }
+
+function startSession(){ startbtn.disabled=true; resetbtn.disabled=false; currentSet=0; beginSqueeze(); }
+function beginSqueeze(){ if(currentSet>=4){finishSession();return;} phase='squeeze'; secondsLeft=SQUEEZE_SEC; totalSec=SQUEEZE_SEC; const h=HANDS[currentSet]; stopBreath();stopChant();clearLux(); updateHands(h);updateDots(); phaseLbl.textContent='squeeze \xb7 set '+(currentSet+1)+' of 4'; tstatusEl.textContent=h+' hand \u2014 squeeze and hold.'; speak('Set '+(currentSet+1)+'. '+h+' hand. Squeeze now.'); tick(); }
+function beginRest(){ phase='rest'; secondsLeft=REST_SEC; totalSec=REST_SEC; updateHands(null); phaseLbl.textContent='rest \xb7 lux \xe6terna'; const next=currentSet<3?HANDS[currentSet+1]:null; tstatusEl.textContent='Rest. Breathe with the ring.'; speak('Rest. Breathe slowly.'+(next?' Next: '+next+' hand.':' Final rest.')); startBreath();playChant();scheduleLux(); tick(); }
+function finishSession(){ phase='done'; clearInterval(mainTimer);stopBreath();stopChant();clearLux(); speechSynthesis.cancel(); ring.style.strokeDashoffset=0;ring.style.stroke='#c9a84c'; bigtime.textContent='\u2020'; phaseLbl.textContent=''; tstatusEl.textContent=''; document.getElementById('timer-main').style.display='none'; document.getElementById('complete').classList.add('show'); speak('Session complete. Four sets done. Sit quietly and take your reading.'); for(let i=0;i<4;i++)document.getElementById('d'+i).className='set-dot done'; }
+function tick(){ clearInterval(mainTimer); renderTick(); mainTimer=setInterval(()=>{ secondsLeft--; if(secondsLeft<0){ clearInterval(mainTimer); if(phase==='squeeze'){currentSet++;currentSet<4?beginRest():finishSession();}else if(phase==='rest'){beginSqueeze();} return; } renderTick(); },1000); }
+function renderTick(){ bigtime.textContent=fmt(secondsLeft); setOuter(secondsLeft/totalSec,phase==='squeeze'); if(secondsLeft===60&&phase==='squeeze'){speak('Halfway. Keep steady pressure.');tstatusEl.textContent=HANDS[currentSet]+' hand \u2014 halfway.';} if(secondsLeft===10&&phase==='squeeze')speak('Ten seconds.'); if(secondsLeft===10&&phase==='rest'){const next=currentSet<3?HANDS[currentSet+1]:null;speak(next?'Ten seconds. Prepare '+next+' hand.':'Ten seconds.');} }
+function resetSession(){ clearInterval(mainTimer);stopBreath();stopChant();clearLux(); if(window.speechSynthesis)speechSynthesis.cancel(); phase='idle';currentSet=0; bigtime.textContent='2:00';phaseLbl.textContent='ready'; tstatusEl.textContent='Press start when ready.'; ring.style.strokeDashoffset=CIRC_OUTER;ring.style.stroke='#c84b31'; updateHands(null); for(let i=0;i<4;i++)document.getElementById('d'+i).className='set-dot'; startbtn.disabled=false;resetbtn.disabled=true; document.getElementById('timer-main').style.display='block'; document.getElementById('complete').classList.remove('show'); }
+
+/* ══════════════════════════════
+   TRACKER
+══════════════════════════════ */
+const TOTAL = 21;
+const SKEY  = 'ihg_sessions_v2';
+const MKEY  = 'ihg_mvc_v2';
+
+function loadSessions(){ try{ const s=localStorage.getItem(SKEY); if(s)return JSON.parse(s); }catch(e){} return Array.from({length:TOTAL},(_,i)=>({id:i+1,date:'',sys:'',dia:'',rhr:'',done:false,notes:''})); }
+function saveSessions(){ try{localStorage.setItem(SKEY,JSON.stringify(sessions));}catch(e){} }
+function resetData(){ sessions=Array.from({length:TOTAL},(_,i)=>({id:i+1,date:'',sys:'',dia:'',rhr:'',done:false,notes:''})); saveSessions(); renderTracker(); }
+
+let sessions = loadSessions();
+let bpChart  = null;
+
+function onMVC(){ const v=parseFloat(document.getElementById('mvc').value); document.getElementById('ww').textContent=v>0?'\u2192 '+((v*0.3).toFixed(1))+' kg working weight':''; try{localStorage.setItem(MKEY,document.getElementById('mvc').value);}catch(e){} }
+
+function setField(el){ const i=parseInt(el.dataset.i); sessions[i][el.dataset.f]=el.value; saveSessions(); renderMetrics(); renderChart(); }
+function toggleDone(btn){ const i=parseInt(btn.dataset.i); sessions[i].done=!sessions[i].done; saveSessions(); renderTracker(); }
+
+function renderMetrics(){
+  const done=sessions.filter(s=>s.done).length;
+  const ws=sessions.filter(s=>s.sys&&!isNaN(parseInt(s.sys)));
+  const wr=sessions.filter(s=>s.rhr&&!isNaN(parseInt(s.rhr)));
+  let bpH='&mdash;',rhrH='&mdash;',dH='&mdash;',dC='';
+  if(ws.length){ const l=ws[ws.length-1]; bpH=l.sys+(l.dia?'/'+l.dia:''); if(ws.length>1){const d=parseInt(l.sys)-parseInt(ws[0].sys);dH=(d>0?'+':'')+d;dC=d<0?' pos':d>0?' neg':'';} }
+  if(wr.length) rhrH=wr[wr.length-1].rhr+' bpm';
+  document.getElementById('metrics').innerHTML=`
+    <div class="metric-card"><div class="metric-lbl">Done</div><div class="metric-val acc">${done}</div></div>
+    <div class="metric-card"><div class="metric-lbl">Left</div><div class="metric-val">${TOTAL-done}</div></div>
+    <div class="metric-card"><div class="metric-lbl">Latest BP</div><div class="metric-val">${bpH}</div></div>
+    <div class="metric-card"><div class="metric-lbl">Latest RHR</div><div class="metric-val">${rhrH}</div></div>
+    <div class="metric-card"><div class="metric-lbl">BP Delta</div><div class="metric-val${dC}">${dH}</div></div>`;
+}
+function renderStreak(){ const ni=sessions.findIndex(s=>!s.done); document.getElementById('streak').innerHTML=sessions.map((s,i)=>`<div class="s-dot${s.done?' done':i===ni?' next':''}">${s.id}</div>`).join(''); }
+function renderChart(){
+  const data=sessions.map(s=>(s.sys&&!isNaN(parseInt(s.sys)))?parseInt(s.sys):null);
+  const ctx=document.getElementById('bpchart');
+  if(bpChart){bpChart.destroy();bpChart=null;}
+  bpChart=new Chart(ctx,{type:'line',data:{labels:sessions.map(s=>s.id.toString()),datasets:[{label:'Systolic',data,borderColor:'#c84b31',backgroundColor:'rgba(200,75,49,0.07)',borderWidth:2,pointRadius:data.map(v=>v!==null?4:0),pointBackgroundColor:'#c84b31',tension:0.3,spanGaps:false},{label:'Goal',data:Array(TOTAL).fill(115),borderColor:'#c9a84c',borderWidth:1.5,borderDash:[4,4],pointRadius:0,fill:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:8},color:'#6a5f45',autoSkip:false,maxRotation:0},grid:{color:'rgba(200,168,80,0.06)'}},y:{min:100,max:160,ticks:{font:{size:8},color:'#6a5f45',stepSize:10},grid:{color:'rgba(200,168,80,0.06)'}}}}});
+}
+function renderTable(){
+  document.getElementById('tbody').innerHTML=sessions.map((s,i)=>`
+    <tr class="${s.done?'done-row':''}">
+      <td class="snum">${s.id}</td>
+      <td><input type="text" placeholder="date" value="${s.date}" data-i="${i}" data-f="date" onchange="setField(this)"></td>
+      <td><div class="bp-inp"><input type="number" placeholder="sys" min="80" max="200" value="${s.sys}" data-i="${i}" data-f="sys" onchange="setField(this)" style="width:38px"><span class="bp-sep">/</span><input type="number" placeholder="dia" min="50" max="140" value="${s.dia}" data-i="${i}" data-f="dia" onchange="setField(this)" style="width:38px"></div></td>
+      <td><input type="number" placeholder="bpm" min="30" max="120" value="${s.rhr}" data-i="${i}" data-f="rhr" onchange="setField(this)" style="width:40px"></td>
+      <td style="text-align:center"><button class="checkbtn${s.done?' done':''}" data-i="${i}" onclick="toggleDone(this)">${s.done?'&#10003;':''}</button></td>
+      <td><input type="text" placeholder="one word or emoji" value="${s.notes}" data-i="${i}" data-f="notes" onchange="setField(this)"></td>
+    </tr>`).join('');
+}
+function renderTracker(){ renderMetrics(); renderStreak(); renderChart(); renderTable(); }
+
+/* ══════════════════════════════
+   NOTES
+══════════════════════════════ */
+const NKEY = 'ihg_notes_v1';
+const DEFAULT_NOTES = `IHG Protocol — Running Notes
+Orgonotic Streaming Experiment / Applied Reichian Bodywork
+═══════════════════════════════════════
+
+SESSION LOG
+───────────
+Session 1 — April 8, 2026 — BP: 129
+Session 2 — April 9, 2026 — BP: 121/76 (post-coffee, arm slightly elevated)
+
+OBSERVATIONS
+───────────
+• Pre-coffee ritual enforced by protocol
+• Protein shake → IHG → coffee is the morning sequence
+• BP cuff: arm at heart level, supinated (palm up)
+• 3-day potassium citrate experiment pending (K ordered)
+• Electrolyte hypothesis: K + Mg may move BP 3-5 mmHg if deficient
+• At 28: raw food, 2hr breathwork, chi gung daily — BP still ~129
+  → Constitutional floor likely; sympathetic tone is the variable
+• IHG tricking the organism into relaxing vs. asking it to relax
+
+PARKING LOT
+───────────
+• Divan + coffee table books: protocol enforces the right mindstate
+  for things you always want to do but never have headspace for
+• Nietzsche — "Virtue that Makes Small" / leaning into passivity
+  Check Nietzsche & Philosophy chat for exact quote
+• Doing nothing deeply, scientifically measurably
+• KB Frantzis: red dust settling in a water glass = the rest interval
+• Reich on electrolytes: bioelectric charge capacity, not just nutrients
+• The FDA's 99mg potassium cap: convenient for the thiazide market
+• Better TTS voices: ElevenLabs pre-generated MP3 cues
+• Gregorian chant: Solesmes monks Requiem recommended
+• Website: quietvires.com or luxaeterna.me (check availability)
+  Host on Cloudflare Pages
+
+PROTOCOL REFERENCE
+──────────────────
+4 sets × 2 min @ 30% MVC
+2 min rest between sets (slow breath, 5-6 sec in/out)
+Hand order: L, R, L, R
+Target: 21 sessions as rapidly as logistically possible
+BP goal: 115 sys / RHR: trending down
+Why: training the organism to release armoring → 🦢 orgonotic streaming`;
+
+function loadNotes(){ try{ const n=localStorage.getItem(NKEY); return n||DEFAULT_NOTES; }catch(e){ return DEFAULT_NOTES; } }
+function saveNotes(){ try{ localStorage.setItem(NKEY,document.getElementById('notesarea').value); document.getElementById('notes-save-status').textContent='saved.'; setTimeout(()=>document.getElementById('notes-save-status').textContent='',1500); }catch(e){} }
+
+/* ══════════════════════════════
+   INIT
+══════════════════════════════ */
+document.getElementById('notesarea').value = loadNotes();
+try{ const mv=localStorage.getItem(MKEY); if(mv){document.getElementById('mvc').value=mv;onMVC();} }catch(e){}
+renderTracker();
+</script>
+</body>
+</html>

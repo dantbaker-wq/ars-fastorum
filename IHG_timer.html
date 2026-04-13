@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IHG Protocol</title>
+<link href="https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=IM+Fell+English+SC&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --vellum: #0d0b08;
+  --vellum2: #141108;
+  --vellum3: #1c1810;
+  --ink: #e8dfc8;
+  --ink2: #a89870;
+  --ink3: #6a5f45;
+  --acc: #c84b31;
+  --gold: #c9a84c;
+  --rest-col: #4a7c6f;
+  --border: rgba(200,168,80,0.15);
+  --radius: 12px;
+}
+
+body {
+  background: var(--vellum);
+  color: var(--ink);
+  font-family: 'IM Fell English', Georgia, serif;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  overflow-x: hidden;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    repeating-linear-gradient(0deg, transparent, transparent 28px, rgba(200,168,80,0.02) 28px, rgba(200,168,80,0.02) 29px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.app {
+  width: 100%;
+  max-width: 460px;
+  text-align: center;
+  position: relative;
+  z-index: 1;
+}
+
+.title {
+  font-family: 'IM Fell English SC', serif;
+  font-size: 11px;
+  letter-spacing: 3px;
+  color: var(--ink3);
+  margin-bottom: 2rem;
+  text-transform: uppercase;
+}
+
+/* RING */
+.ring-wrap {
+  position: relative;
+  width: 240px;
+  height: 240px;
+  margin: 0 auto 1.25rem;
+}
+.ring-wrap svg {
+  position: absolute;
+  top: 0; left: 0;
+  transform: rotate(-90deg);
+}
+.ring-bg { fill: none; stroke: rgba(200,168,80,0.08); stroke-width: 6; }
+.ring-fg {
+  fill: none;
+  stroke-width: 6;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 1s linear, stroke 0.6s ease;
+}
+.breath-ring {
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.08s linear, stroke 0.5s ease, opacity 0.5s;
+  opacity: 0;
+}
+.ring-center {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 4px;
+}
+.big-time {
+  font-family: 'IM Fell English', serif;
+  font-size: 54px;
+  font-weight: 400;
+  letter-spacing: -2px;
+  line-height: 1;
+  color: var(--ink);
+}
+.phase-label {
+  font-size: 10px;
+  color: var(--ink3);
+  letter-spacing: 2px;
+  font-family: 'IM Fell English SC', serif;
+}
+
+/* BREATH CUE */
+.breath-cue {
+  font-size: 12px;
+  color: var(--gold);
+  letter-spacing: 1px;
+  min-height: 18px;
+  font-style: italic;
+  margin-bottom: 0.75rem;
+  opacity: 0;
+  transition: opacity 0.4s;
+}
+.breath-cue.show { opacity: 1; }
+
+/* LUX FIELD */
+.lux-field {
+  min-height: 120px;
+  margin: 0 auto 1.25rem;
+  max-width: 380px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  justify-content: center;
+}
+.lux-phrase {
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 1s ease, transform 1s ease;
+}
+.lux-phrase.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+.lux-latin {
+  font-size: 17px;
+  color: var(--gold);
+  line-height: 1.35;
+  font-style: italic;
+}
+.lux-english {
+  font-size: 10px;
+  color: var(--ink3);
+  letter-spacing: 0.5px;
+  font-style: normal;
+  font-family: 'IM Fell English SC', serif;
+  margin-top: 3px;
+}
+
+/* HANDS */
+.hand-row {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 1rem;
+}
+.hand {
+  padding: 5px 20px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-family: 'IM Fell English SC', serif;
+  letter-spacing: 1px;
+  border: 0.5px solid var(--border);
+  color: var(--ink3);
+  background: var(--vellum2);
+  transition: all 0.4s;
+}
+.hand.active {
+  background: var(--acc);
+  border-color: var(--acc);
+  color: #fff;
+}
+
+/* DOTS */
+.sets-row {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 1.25rem;
+}
+.set-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--vellum3);
+  border: 0.5px solid var(--border);
+  transition: background 0.4s, border-color 0.4s;
+}
+.set-dot.done { background: var(--acc); border-color: var(--acc); }
+.set-dot.active { background: var(--gold); border-color: var(--gold); }
+
+/* STATUS */
+.status {
+  font-size: 13px;
+  color: var(--ink2);
+  min-height: 20px;
+  margin-bottom: 1.25rem;
+  font-style: italic;
+}
+
+/* CONTROLS */
+.controls {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+.btn {
+  padding: 10px 24px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-family: 'IM Fell English SC', serif;
+  letter-spacing: 1px;
+  border: 0.5px solid var(--border);
+  background: var(--vellum2);
+  color: var(--ink2);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn:hover:not(:disabled) { border-color: var(--gold); color: var(--gold); }
+.btn.primary {
+  background: var(--acc);
+  border-color: var(--acc);
+  color: #fff;
+  font-size: 14px;
+  padding: 12px 36px;
+}
+.btn.primary:hover:not(:disabled) { opacity: 0.85; }
+.btn:disabled { opacity: 0.3; cursor: default; }
+
+/* COMPLETE */
+.complete {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+.complete.show { display: flex; }
+.complete-title {
+  font-family: 'IM Fell English SC', serif;
+  font-size: 24px;
+  color: var(--gold);
+  letter-spacing: 2px;
+}
+.complete-sub { font-size: 13px; color: var(--ink2); font-style: italic; }
+.complete-verse { margin-top: 4px; }
+.complete-verse .lux-latin { font-size: 14px; }
+
+.chant-note {
+  font-size: 10px;
+  color: var(--ink3);
+  margin-top: 2rem;
+  font-style: italic;
+  line-height: 1.6;
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="title">Isometric Handgrip &middot; Protocol Timer</div>
+
+  <div id="main">
+    <div class="ring-wrap">
+      <svg width="240" height="240" viewBox="0 0 240 240">
+        <circle class="ring-bg" cx="120" cy="120" r="106"/>
+        <circle class="ring-fg" id="ring" cx="120" cy="120" r="106"/>
+        <circle class="breath-ring" id="bring" cx="120" cy="120" r="82"/>
+      </svg>
+      <div class="ring-center">
+        <div class="big-time" id="bigtime">2:00</div>
+        <div class="phase-label" id="phaselabel">ready</div>
+      </div>
+    </div>
+
+    <div class="breath-cue" id="breathcue">inhale</div>
+
+    <div class="lux-field" id="luxfield">
+      <div class="lux-phrase" id="lp0">
+        <div class="lux-latin">Lux &aelig;terna luceat eis, Domine,</div>
+        <div class="lux-english">May eternal light shine upon them, O Lord,</div>
+      </div>
+      <div class="lux-phrase" id="lp1">
+        <div class="lux-latin">cum Sanctis tuis in &aelig;ternum,</div>
+        <div class="lux-english">with thy Saints for ever,</div>
+      </div>
+      <div class="lux-phrase" id="lp2">
+        <div class="lux-latin">quia pius es.</div>
+        <div class="lux-english">for thou art merciful.</div>
+      </div>
+      <div class="lux-phrase" id="lp3">
+        <div class="lux-latin">Requiem &aelig;ternam dona eis, Domine,</div>
+        <div class="lux-english">Grant them eternal rest, O Lord,</div>
+      </div>
+      <div class="lux-phrase" id="lp4">
+        <div class="lux-latin">et lux perpetua luceat eis.</div>
+        <div class="lux-english">and may perpetual light shine upon them.</div>
+      </div>
+    </div>
+
+    <div class="hand-row">
+      <div class="hand" id="hand-L">Left</div>
+      <div class="hand" id="hand-R">Right</div>
+    </div>
+
+    <div class="sets-row">
+      <div class="set-dot" id="d0"></div>
+      <div class="set-dot" id="d1"></div>
+      <div class="set-dot" id="d2"></div>
+      <div class="set-dot" id="d3"></div>
+    </div>
+
+    <div class="status" id="status">Press start when ready.</div>
+
+    <div class="controls">
+      <button class="btn primary" id="startbtn" onclick="startSession()">Start</button>
+      <button class="btn" id="resetbtn" onclick="resetSession()" disabled>Reset</button>
+    </div>
+  </div>
+
+  <div class="complete" id="complete">
+    <div style="font-size:32px; color: var(--gold);">&dagger;</div>
+    <div class="complete-title">Lux &AElig;terna</div>
+    <div class="complete-sub">Four sets complete. Sit quietly. Take your reading.</div>
+    <div class="lux-phrase visible complete-verse">
+      <div class="lux-latin">et lux perpetua luceat eis.</div>
+      <div class="lux-english">and may perpetual light shine upon them.</div>
+    </div>
+    <button class="btn primary" onclick="resetSession()" style="margin-top:1rem">New session</button>
+  </div>
+
+  <div class="chant-note">
+    &dagger; &nbsp;Place a file named <em>chant.mp3</em> in the same folder as this file to hear Gregorian chant during rest intervals.<br>
+    Solesmes monks &mdash; Requiem (Lux &AElig;terna) recommended.
+  </div>
+
+  <audio id="chant-audio" loop>
+    <source src="chant.mp3" type="audio/mpeg">
+  </audio>
+</div>
+
+<script>
+const SQUEEZE_SEC  = 120;
+const REST_SEC     = 120;
+const HANDS        = ['Left','Right','Left','Right'];
+const CIRC_OUTER   = 2 * Math.PI * 106;
+const CIRC_INNER   = 2 * Math.PI * 82;
+const BREATH_IN    = 5.5;
+const BREATH_OUT   = 5.5;
+const LUX_COUNT    = 5;
+const LUX_INTERVAL = REST_SEC / LUX_COUNT; // 24 sec each
+
+const ring      = document.getElementById('ring');
+const bring     = document.getElementById('bring');
+const bigtime   = document.getElementById('bigtime');
+const phaseLbl  = document.getElementById('phaselabel');
+const statusEl  = document.getElementById('status');
+const breathCue = document.getElementById('breathcue');
+const startbtn  = document.getElementById('startbtn');
+const resetbtn  = document.getElementById('resetbtn');
+const audio     = document.getElementById('chant-audio');
+
+ring.style.strokeDasharray   = CIRC_OUTER;
+ring.style.strokeDashoffset  = CIRC_OUTER;
+bring.style.strokeDasharray  = CIRC_INNER;
+bring.style.strokeDashoffset = CIRC_INNER;
+
+let mainTimer   = null;
+let breathTimer = null;
+let luxTimers   = [];
+let currentSet  = 0;
+let phase       = 'idle';
+let secondsLeft = 0;
+let totalSec    = 0;
+let bPhase      = 'in';
+let bSec        = 0;
+
+function fmt(s) {
+  return Math.floor(s/60) + ':' + String(s % 60).padStart(2,'0');
+}
+function setOuter(frac, squeeze) {
+  ring.style.strokeDashoffset = CIRC_OUTER * (1 - frac);
+  ring.style.stroke = squeeze ? '#c84b31' : '#4a7c6f';
+}
+function setInner(frac) {
+  bring.style.strokeDashoffset = CIRC_INNER * (1 - frac);
+}
+function speak(txt) {
+  if (!window.speechSynthesis) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(txt);
+  u.rate = 0.88; u.pitch = 0.95;
+  speechSynthesis.speak(u);
+}
+function hideLux() {
+  for (let i = 0; i < LUX_COUNT; i++) {
+    const el = document.getElementById('lp'+i);
+    if (el) el.classList.remove('visible');
+  }
+}
+function scheduleLux() {
+  hideLux();
+  luxTimers.forEach(t => clearTimeout(t));
+  luxTimers = [];
+  for (let i = 0; i < LUX_COUNT; i++) {
+    luxTimers.push(setTimeout(() => {
+      const el = document.getElementById('lp'+i);
+      if (el) el.classList.add('visible');
+    }, i * LUX_INTERVAL * 1000));
+  }
+}
+function clearLux() {
+  luxTimers.forEach(t => clearTimeout(t));
+  luxTimers = [];
+  hideLux();
+}
+function startBreath() {
+  clearInterval(breathTimer);
+  bPhase = 'in'; bSec = 0;
+  bring.style.opacity = '1';
+  breathCue.classList.add('show');
+  breathCue.textContent = 'inhale';
+  breathTimer = setInterval(() => {
+    bSec++;
+    if (bPhase === 'in') {
+      setInner(Math.min(bSec / BREATH_IN, 1));
+      bring.style.stroke = '#c9a84c';
+      if (bSec >= BREATH_IN) { bPhase = 'out'; bSec = 0; breathCue.textContent = 'exhale'; }
+    } else {
+      setInner(Math.max(1 - bSec / BREATH_OUT, 0));
+      bring.style.stroke = '#4a7c6f';
+      if (bSec >= BREATH_OUT) { bPhase = 'in'; bSec = 0; breathCue.textContent = 'inhale'; }
+    }
+  }, 1000);
+}
+function stopBreath() {
+  clearInterval(breathTimer); breathTimer = null;
+  bring.style.opacity = '0';
+  breathCue.classList.remove('show');
+  setInner(0);
+}
+function playChant()  { try { audio.currentTime = 0; audio.volume = 0.55; audio.play(); } catch(e){} }
+function stopChant()  { try { audio.pause(); } catch(e){} }
+function updateDots() {
+  for (let i = 0; i < 4; i++) {
+    const d = document.getElementById('d'+i);
+    d.className = 'set-dot' + (i < currentSet ? ' done' : i === currentSet ? ' active' : '');
+  }
+}
+function updateHands(h) {
+  document.getElementById('hand-L').className = 'hand' + (h === 'Left'  ? ' active' : '');
+  document.getElementById('hand-R').className = 'hand' + (h === 'Right' ? ' active' : '');
+}
+
+function startSession() {
+  startbtn.disabled = true; resetbtn.disabled = false;
+  currentSet = 0;
+  beginSqueeze();
+}
+
+function beginSqueeze() {
+  if (currentSet >= 4) { finishSession(); return; }
+  phase = 'squeeze'; secondsLeft = SQUEEZE_SEC; totalSec = SQUEEZE_SEC;
+  const h = HANDS[currentSet];
+  stopBreath(); stopChant(); clearLux();
+  updateHands(h); updateDots();
+  phaseLbl.textContent = 'squeeze \xb7 set ' + (currentSet+1) + ' of 4';
+  statusEl.textContent  = h + ' hand \u2014 squeeze and hold.';
+  speak('Set ' + (currentSet+1) + '. ' + h + ' hand. Squeeze now.');
+  tick();
+}
+
+function beginRest() {
+  phase = 'rest'; secondsLeft = REST_SEC; totalSec = REST_SEC;
+  updateHands(null);
+  phaseLbl.textContent = 'rest \xb7 lux \xe6terna';
+  const next = currentSet < 3 ? HANDS[currentSet+1] : null;
+  statusEl.textContent  = 'Rest. Breathe with the ring.';
+  speak('Rest. Breathe slowly.' + (next ? ' Next: ' + next + ' hand.' : ' Final rest.'));
+  startBreath(); playChant(); scheduleLux();
+  tick();
+}
+
+function finishSession() {
+  phase = 'done';
+  clearInterval(mainTimer); stopBreath(); stopChant(); clearLux();
+  speechSynthesis.cancel();
+  ring.style.strokeDashoffset = 0; ring.style.stroke = '#c9a84c';
+  bigtime.textContent = '\u2020';
+  phaseLbl.textContent = ''; statusEl.textContent = '';
+  document.getElementById('main').style.display = 'none';
+  document.getElementById('complete').classList.add('show');
+  speak('Session complete. Four sets done. Sit quietly and take your reading.');
+  for (let i=0;i<4;i++) document.getElementById('d'+i).className = 'set-dot done';
+}
+
+function tick() {
+  clearInterval(mainTimer);
+  renderTick();
+  mainTimer = setInterval(() => {
+    secondsLeft--;
+    if (secondsLeft < 0) {
+      clearInterval(mainTimer);
+      if (phase === 'squeeze') { currentSet++; currentSet < 4 ? beginRest() : finishSession(); }
+      else if (phase === 'rest') { beginSqueeze(); }
+      return;
+    }
+    renderTick();
+  }, 1000);
+}
+
+function renderTick() {
+  bigtime.textContent = fmt(secondsLeft);
+  setOuter(secondsLeft / totalSec, phase === 'squeeze');
+  if (secondsLeft === 60 && phase === 'squeeze') {
+    speak('Halfway. Keep steady pressure.');
+    statusEl.textContent = HANDS[currentSet] + ' hand \u2014 halfway.';
+  }
+  if (secondsLeft === 10 && phase === 'squeeze') speak('Ten seconds.');
+  if (secondsLeft === 10 && phase === 'rest') {
+    const next = currentSet < 3 ? HANDS[currentSet+1] : null;
+    speak(next ? 'Ten seconds. Prepare ' + next + ' hand.' : 'Ten seconds.');
+  }
+}
+
+function resetSession() {
+  clearInterval(mainTimer); stopBreath(); stopChant(); clearLux();
+  if (window.speechSynthesis) speechSynthesis.cancel();
+  phase = 'idle'; currentSet = 0;
+  bigtime.textContent = '2:00'; phaseLbl.textContent = 'ready';
+  statusEl.textContent = 'Press start when ready.';
+  ring.style.strokeDashoffset = CIRC_OUTER; ring.style.stroke = '#c84b31';
+  updateHands(null);
+  for (let i=0;i<4;i++) document.getElementById('d'+i).className = 'set-dot';
+  startbtn.disabled = false; resetbtn.disabled = true;
+  document.getElementById('main').style.display = 'block';
+  document.getElementById('complete').classList.remove('show');
+}
+</script>
+</body>
+</html>
