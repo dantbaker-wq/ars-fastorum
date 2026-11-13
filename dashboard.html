@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Dashboard">
+<meta name="theme-color" content="#14110f">
+<title>Dashboard</title>
+<style>
+  :root { --ink:#14110f; --bone:#ebe4d4; --dim:#8a8172; --rule:#2c2620; --ember:#e08a3c; }
+  * { box-sizing:border-box; margin:0; }
+  html, body { height:100%; background:var(--ink); color:var(--bone); }
+  body {
+    font-family:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding:max(28px, env(safe-area-inset-top)) 28px max(28px, env(safe-area-inset-bottom));
+    -webkit-font-smoothing:antialiased;
+  }
+  main { width:100%; max-width:360px; }
+  .label { font-size:13px; letter-spacing:.22em; text-transform:uppercase; color:var(--dim); }
+  .figure { display:flex; align-items:baseline; gap:10px; margin:14px 0 4px; }
+  .num { font-size:112px; line-height:.9; font-weight:400; font-variant-numeric:lining-nums; }
+  .of { font-size:22px; color:var(--dim); }
+  .togo { font-size:19px; font-style:italic; color:var(--ember); min-height:1.3em; }
+  .dots { display:grid; grid-template-columns:repeat(10, 1fr); gap:9px; margin:34px 0 30px; }
+  .dot { aspect-ratio:1; border-radius:50%; border:1px solid var(--rule); }
+  .dot.on { background:var(--bone); border-color:var(--bone); }
+  .dot.last { background:var(--ember); border-color:var(--ember); }
+  .meta { display:flex; justify-content:space-between; font-size:14px; color:var(--dim);
+          border-top:1px solid var(--rule); padding-top:14px; }
+  .motto { margin-top:34px; text-align:center; font-style:italic; font-size:15px; color:var(--dim); }
+  .stale .num, .stale .dot.on { opacity:.55; }
+  .err { color:var(--ember); font-size:13px; margin-top:12px; min-height:1.2em; text-align:center; }
+</style>
+</head>
+<body>
+<main id="tile" class="stale">
+  <div class="label">🏋🏻 Dead hang</div>
+  <div class="figure"><span class="num" id="num">–</span><span class="of">of 100 min</span></div>
+  <div class="togo" id="togo">&nbsp;</div>
+  <div class="dots" id="dots"></div>
+  <div class="meta"><span id="count">&nbsp;</span><span id="last">&nbsp;</span></div>
+  <div class="motto">Vis ⚡ celeriter</div>
+  <div class="err" id="err"></div>
+</main>
+
+<script>
+// ── config ──────────────────────────────────────────────────────────────
+const SUPABASE_URL = "https://kvwqbjzpkiqwivjtglgd.supabase.co";
+const ANON_KEY     = "sb_publishable_FWgEWa95HfVilZr3h13pSA_7DKILEf_";   // publishable key: public by design
+const GOAL_MIN     = 100;
+const HANG         = "\u{1F3CB}";              // 🏋 base glyph: matches 🏋🏻 and 🏋🏻‍♂️
+const CACHE        = "dashboard.hang.v1";
+
+// ── duration: "60s", "1'06", "25'", "2m" → seconds ──────────────────────
+function parseSeconds(msg) {
+  let m;
+  if ((m = msg.match(/(\d+)\s*['′]\s*(\d{2})/)))  return +m[1] * 60 + +m[2];
+  if ((m = msg.match(/(\d+)\s*s\b/i)))            return +m[1];
+  if ((m = msg.match(/(\d+)\s*(?:['′]|m(?:in)?\b)/i))) return +m[1] * 60;
+  return 0;
+}
+
+// A row counts when 🏋 is in the text and it isn't someone else's hang.
+const isMine = r => !/\bLuke\b/i.test(r.message);
+
+function summarize(rows) {
+  const mine = rows.filter(isMine)
+    .map(r => ({ at: r.created_at, s: r.seconds ?? parseSeconds(r.message) }))
+    .filter(r => r.s > 0)
+    .sort((a, b) => a.at.localeCompare(b.at));
+  const secs = mine.reduce((t, r) => t + r.s, 0);
+  return { secs, n: mine.length, last: mine.length ? mine[mine.length - 1].at : null };
+}
+
+function render(d, fresh) {
+  const min = Math.floor(d.secs / 60), left = Math.max(0, GOAL_MIN - min);
+  document.getElementById("num").textContent = min;
+  document.getElementById("togo").textContent =
+    left ? `${left} to go` : "Factum est.";
+  document.getElementById("count").textContent = `${d.n} hangs`;
+  if (d.last) {
+    const dt = new Date(d.last);
+    const days = Math.floor((Date.now() - dt) / 864e5);
+    const when = days <= 0 ? "today" : days === 1 ? "yesterday" : `${days} days ago`;
+    document.getElementById("last").textContent =
+      `last ${dt.toLocaleDateString(undefined, { month: "short", day: "numeric" })} · ${when}`;
+  }
+  const dots = document.getElementById("dots");
+  dots.innerHTML = "";
+  for (let i = 1; i <= GOAL_MIN; i++) {
+    const el = document.createElement("div");
+    el.className = "dot" + (i <= min ? " on" : "") + (i === min ? " last" : "");
+    dots.appendChild(el);
+  }
+  document.getElementById("tile").classList.toggle("stale", !fresh);
+}
+
+async function load() {
+  const q = new URLSearchParams({
+    select: "message,seconds,created_at",
+    message: `like.*${HANG}*`,
+    discarded_at: "is.null",
+  });
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/logs?${q}`, {
+    headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` },
+  });
+  if (!res.ok) throw new Error(`Supabase ${res.status}`);
+  return summarize(await res.json());
+}
+
+// Paint the last known number instantly, then refresh from the database.
+try { const c = JSON.parse(localStorage.getItem(CACHE)); if (c) render(c, false); } catch (e) {}
+load().then(d => {
+  render(d, true);
+  try { localStorage.setItem(CACHE, JSON.stringify(d)); } catch (e) {}
+}).catch(e => { document.getElementById("err").textContent = e.message; });
+</script>
+</body>
+</html>
